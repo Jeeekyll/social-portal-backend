@@ -9,9 +9,4 @@ export class UpdateUserDto {
 
   @IsNotEmpty()
   readonly username: string;
-
-  @IsNotEmpty()
-  password: string;
-
-  readonly image: string;
 }

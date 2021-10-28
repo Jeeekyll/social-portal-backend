@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   Post,
   Put,
@@ -19,6 +20,7 @@ import { UserEntity } from './user.entity';
 import { AuthGuard } from './guards/auth.guard';
 import { UpdateUserDto } from './dto/updateUser.dto';
 import { FileFieldsInterceptor } from '@nestjs/platform-express';
+import { ChangePasswordDto } from './dto/changePassword.dto';
 
 @Controller()
 export class UserController {
@@ -27,10 +29,22 @@ export class UserController {
   @Put('user/avatar')
   @UseGuards(AuthGuard)
   @UseInterceptors(FileFieldsInterceptor([{ name: 'avatar', maxCount: 1 }]))
-  async create(@User('id') currentUserId: number, @UploadedFiles() file) {
-    console.log(file);
+  async uploadAvatar(
+    @User('id') currentUserId: number,
+    @UploadedFiles() file,
+  ): Promise<UserResponseInterface> {
     const { avatar } = file;
-    return this.userService.uploadImage(currentUserId, avatar[0]);
+    const user = await this.userService.uploadAvatar(currentUserId, avatar[0]);
+    return this.userService.buildUserResponse(user);
+  }
+
+  @Delete('user/avatar')
+  @UseGuards(AuthGuard)
+  async removeAvatar(
+    @User('id') currentUserId: number | string,
+  ): Promise<UserResponseInterface> {
+    const user = await this.userService.removeAvatar(currentUserId);
+    return this.userService.buildUserResponse(user);
   }
 
   @Post('/users')
@@ -66,5 +80,18 @@ export class UserController {
   ): Promise<UserResponseInterface> {
     const updatedUser = await this.userService.update(id, updateUserDto);
     return this.userService.buildUserResponse(updatedUser);
+  }
+
+  @Post('user/password')
+  @UseGuards(AuthGuard)
+  @UsePipes(new ValidationPipe())
+  async changePassword(
+    @User('id') currentUserId: string | number,
+    @Body() changePasswordDto: ChangePasswordDto,
+  ) {
+    return await this.userService.changePassword(
+      changePasswordDto,
+      currentUserId,
+    );
   }
 }

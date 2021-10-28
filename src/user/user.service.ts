@@ -11,6 +11,7 @@ import { compare } from 'bcrypt';
 import { UpdateUserDto } from './dto/updateUser.dto';
 import { FileService } from '../file/file.service';
 import { hash } from 'bcrypt';
+import { ChangePasswordDto } from './dto/changePassword.dto';
 
 @Injectable()
 export class UserService {
@@ -69,29 +70,88 @@ export class UserService {
     return user;
   }
 
-  findById(id: number): Promise<UserEntity> {
-    return this.userRepository.findOne(id);
-  }
-
   async update(
     id: number | string,
     updateUserDto: UpdateUserDto,
   ): Promise<UserEntity> {
     const userById = await this.userRepository.findOne(id);
 
-    if (updateUserDto.password) {
-      updateUserDto.password = await hash(updateUserDto.password, 10);
-    }
-
     Object.assign(userById, updateUserDto);
     return await this.userRepository.save(userById);
   }
 
-  async uploadImage(userId: number, image): Promise<UserEntity> {
+  async uploadAvatar(userId: number, image): Promise<UserEntity> {
     const userById = await this.userRepository.findOne(userId);
-    const uploadedImage = this.fileService.createFile('image', image);
+
+    //remove previous image
+    if (userById.image) {
+      await this.fileService.removeFile(userById.image);
+    }
+
+    const uploadedImage = await this.fileService.createFile(
+      `images/users/${userById.id}`,
+      image,
+    );
     Object.assign(userById, { image: uploadedImage });
     return await this.userRepository.save(userById);
+  }
+
+  async removeAvatar(userId: string | number) {
+    const userById = await this.userRepository.findOne(userId);
+    const isAvatarRemoved = await this.fileService.removeFile(userById.image);
+
+    if (!isAvatarRemoved) {
+      throw new HttpException(
+        `Can't remove avatar`,
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+
+    Object.assign(userById, { image: '' });
+    return await this.userRepository.save(userById);
+  }
+
+  async changePassword(changePasswordDto: ChangePasswordDto, userId) {
+    const userById = await this.userRepository.findOne(userId);
+    const isPasswordCorrect = await this.checkPassword(
+      userById,
+      changePasswordDto.currentPassword,
+    );
+
+    if (!isPasswordCorrect) {
+      throw new HttpException(
+        'Wrong credentials',
+        HttpStatus.UNPROCESSABLE_ENTITY,
+      );
+    }
+
+    if (changePasswordDto.newPassword) {
+      userById.password = await hash(changePasswordDto.newPassword, 10);
+    }
+
+    await this.userRepository.save(userById);
+    return { data: true };
+  }
+
+  async checkPassword(user: UserEntity, password: string) {
+    const userById = await this.userRepository.findOne(user.id, {
+      select: ['id', 'username', 'password'],
+    });
+
+    const isPasswordCorrect = await compare(password, userById.password);
+
+    if (!isPasswordCorrect) {
+      throw new HttpException(
+        'Wrong credentials',
+        HttpStatus.UNPROCESSABLE_ENTITY,
+      );
+    }
+
+    return { data: isPasswordCorrect };
+  }
+
+  findById(id: number): Promise<UserEntity> {
+    return this.userRepository.findOne(id);
   }
 
   buildUserResponse(user: UserEntity): UserResponseInterface {
