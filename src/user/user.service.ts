@@ -9,12 +9,15 @@ import { UserResponseInterface } from './types/userResponse.interface';
 import { LoginUserDto } from './dto/loginUser.dto';
 import { compare } from 'bcrypt';
 import { UpdateUserDto } from './dto/updateUser.dto';
+import { FileService } from '../file/file.service';
+import { hash } from 'bcrypt';
 
 @Injectable()
 export class UserService {
   constructor(
     @InjectRepository(UserEntity)
     private readonly userRepository: Repository<UserEntity>,
+    private readonly fileService: FileService,
   ) {}
 
   async createUser(createUserDto: CreateUserDto): Promise<UserEntity> {
@@ -63,7 +66,6 @@ export class UserService {
     }
 
     delete user.password;
-
     return user;
   }
 
@@ -76,8 +78,19 @@ export class UserService {
     updateUserDto: UpdateUserDto,
   ): Promise<UserEntity> {
     const userById = await this.userRepository.findOne(id);
-    Object.assign(userById, updateUserDto);
 
+    if (updateUserDto.password) {
+      updateUserDto.password = await hash(updateUserDto.password, 10);
+    }
+
+    Object.assign(userById, updateUserDto);
+    return await this.userRepository.save(userById);
+  }
+
+  async uploadImage(userId: number, image): Promise<UserEntity> {
+    const userById = await this.userRepository.findOne(userId);
+    const uploadedImage = this.fileService.createFile('image', image);
+    Object.assign(userById, { image: uploadedImage });
     return await this.userRepository.save(userById);
   }
 
