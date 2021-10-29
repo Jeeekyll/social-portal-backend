@@ -8,6 +8,7 @@ import { ArticleResponseInterface } from './types/articleResponse.interface';
 import slugify from 'slugify';
 import { UpdateArticleDto } from './dto/updateArticle.dto';
 import { ArticlesResponseInterface } from './types/articlesResponse.interface';
+import { FileService } from '../file/file.service';
 
 @Injectable()
 export class ArticleService {
@@ -16,6 +17,7 @@ export class ArticleService {
     private readonly articleRepository: Repository<ArticleEntity>,
     @InjectRepository(UserEntity)
     private readonly userRepository: Repository<UserEntity>,
+    private readonly fileService: FileService,
   ) {}
 
   async findAll(
@@ -77,7 +79,11 @@ export class ArticleService {
   }
 
   async findOne(slug: string): Promise<ArticleEntity> {
-    return await this.articleRepository.findOne({ slug });
+    const queryBuilder = await getRepository(ArticleEntity)
+      .createQueryBuilder('articles')
+      .leftJoinAndSelect('articles.author', 'author')
+      .where('articles.slug = :slug', { slug });
+    return await queryBuilder.getOne();
   }
 
   async deleteArticle(slug: string, userId: number) {
@@ -115,15 +121,39 @@ export class ArticleService {
     return await this.articleRepository.save(articleBySlug);
   }
 
+  async updateCover(userId: number, slug: string, cover: File) {
+    const articleBySlug = await getRepository(ArticleEntity)
+      .createQueryBuilder('articles')
+      .leftJoinAndSelect('articles.author', 'author')
+      .where('articles.slug = :slug', { slug })
+      .getOne();
+
+    if (articleBySlug.author.id !== userId) {
+      throw new HttpException('Wrong user', HttpStatus.UNPROCESSABLE_ENTITY);
+    }
+
+    if (articleBySlug.cover) {
+      await this.fileService.removeFile(articleBySlug.cover);
+    }
+
+    const uploadedImage = await this.fileService.createFile(
+      `images/articles/${articleBySlug.id}`,
+      cover,
+    );
+    Object.assign(articleBySlug, { cover: uploadedImage });
+    return await this.articleRepository.save(articleBySlug);
+  }
+
   buildArticleResponse(article: ArticleEntity): ArticleResponseInterface {
     return { article };
   }
 
   private getSlug(title: string): string {
-    return (
+    const tempSlug =
       slugify(title, { lower: true }) +
       '-' +
-      ((Math.random() * Math.pow(36, 6)) | 0).toString(36)
-    );
+      ((Math.random() * Math.pow(36, 6)) | 0).toString(36);
+
+    return tempSlug.split('.').join('');
   }
 }
