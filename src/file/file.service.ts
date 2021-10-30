@@ -10,6 +10,7 @@ export class FileService {
       const fileExtension = file.originalname.split('.').pop();
       const fileName = uuid.v4() + '.' + fileExtension;
       const filePath = path.resolve(__dirname, '..', 'static', type);
+
       if (!fs.existsSync(filePath)) {
         fs.mkdirSync(filePath, { recursive: true });
       }
@@ -20,5 +21,16 @@ export class FileService {
     }
   }
 
-  // removeFile(name: string) {}
+  removeFile(name: string) {
+    try {
+      const filePath = path.resolve(__dirname, '..', 'static');
+
+      if (fs.existsSync(filePath)) {
+        fs.unlinkSync(path.resolve(filePath, name));
+      }
+      return true;
+    } catch (e) {
+      throw new HttpException(e.message, HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+  }
 }

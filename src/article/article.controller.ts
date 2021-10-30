@@ -7,7 +7,9 @@ import {
   Post,
   Put,
   Query,
+  UploadedFiles,
   UseGuards,
+  UseInterceptors,
   UsePipes,
   ValidationPipe,
 } from '@nestjs/common';
@@ -19,6 +21,7 @@ import { UserEntity } from '../user/user.entity';
 import { ArticleResponseInterface } from './types/articleResponse.interface';
 import { UpdateArticleDto } from './dto/updateArticle.dto';
 import { ArticlesResponseInterface } from './types/articlesResponse.interface';
+import { FileFieldsInterceptor } from '@nestjs/platform-express';
 
 @Controller('articles')
 export class ArticleController {
@@ -74,5 +77,23 @@ export class ArticleController {
   @UseGuards(AuthGuard)
   async delete(@User('id') currentUserId: number, @Param('slug') slug: string) {
     return await this.articleService.deleteArticle(slug, currentUserId);
+  }
+
+  @Put(':slug/cover')
+  @UseGuards(AuthGuard)
+  @UseInterceptors(FileFieldsInterceptor([{ name: 'cover', maxCount: 1 }]))
+  async updateCover(
+    @User('id') currentUserId: number,
+    @UploadedFiles() file,
+    @Param('slug') slug: string,
+  ) {
+    const { cover } = file;
+    const article = await this.articleService.updateCover(
+      currentUserId,
+      slug,
+      cover[0],
+    );
+
+    return this.articleService.buildArticleResponse(article);
   }
 }
