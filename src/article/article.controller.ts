@@ -57,7 +57,7 @@ export class ArticleController {
     return this.articleService.buildArticleResponse(article);
   }
 
-  @Put('/:slug')
+  @Put(':slug')
   @UseGuards(AuthGuard)
   async update(
     @User('id') currentUserId: number,
@@ -94,6 +94,32 @@ export class ArticleController {
       cover[0],
     );
 
+    return this.articleService.buildArticleResponse(article);
+  }
+
+  @Post(':slug/favorite')
+  @UseGuards(AuthGuard)
+  async addArticleToFavourites(
+    @User('id') userId: number,
+    @Param('slug') slug: string,
+  ) {
+    const article = await this.articleService.addArticleToFavourites(
+      slug,
+      userId,
+    );
+    return this.articleService.buildArticleResponse(article);
+  }
+
+  @Delete(':slug/favorite')
+  @UseGuards(AuthGuard)
+  async deleteArticleFromFavourites(
+    @User('id') userId: number,
+    @Param('slug') slug: string,
+  ) {
+    const article = await this.articleService.deleteArticleFromFavourites(
+      slug,
+      userId,
+    );
     return this.articleService.buildArticleResponse(article);
   }
 }

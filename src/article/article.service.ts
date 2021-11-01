@@ -79,11 +79,17 @@ export class ArticleService {
   }
 
   async findOne(slug: string): Promise<ArticleEntity> {
-    const queryBuilder = await getRepository(ArticleEntity)
+    const queryBuilder = getRepository(ArticleEntity)
       .createQueryBuilder('articles')
-      .leftJoinAndSelect('articles.author', 'author')
       .where('articles.slug = :slug', { slug });
-    return await queryBuilder.getOne();
+
+    const articleWithComments = queryBuilder
+      .leftJoinAndSelect('articles.author', 'author')
+      .leftJoinAndSelect('articles.comments', 'comments')
+      .leftJoinAndSelect('comments.author', 'creator')
+      .orderBy('comments.createdAt', 'DESC');
+
+    return await articleWithComments.getOne();
   }
 
   async deleteArticle(slug: string, userId: number) {
@@ -142,6 +148,63 @@ export class ArticleService {
     );
     Object.assign(articleBySlug, { cover: uploadedImage });
     return await this.articleRepository.save(articleBySlug);
+  }
+
+  async addArticleToFavourites(
+    slug: string,
+    userId: number,
+  ): Promise<ArticleEntity> {
+    const article = await this.articleRepository.findOne({ slug });
+    const author = await this.userRepository.findOne(userId, {
+      relations: ['favourites'],
+    });
+
+    const isNotLiked =
+      author.favourites.findIndex((item) => item.id === article.id) === -1;
+
+    if (isNotLiked) {
+      author.favourites.push(article);
+      article.favouritesCount++;
+      await this.articleRepository.save(article);
+      await this.userRepository.save(author);
+    }
+
+    return await this.articleWithComments(article.slug);
+  }
+
+  async deleteArticleFromFavourites(slug: string, userId: number) {
+    const article = await this.articleRepository.findOne({ slug });
+    const author = await this.userRepository.findOne(userId, {
+      relations: ['favourites'],
+    });
+
+    const articleIndex = author.favourites.findIndex(
+      (item) => item.id === article.id,
+    );
+
+    if (articleIndex >= 0) {
+      author.favourites.splice(articleIndex, 1);
+      article.favouritesCount--;
+
+      await this.articleRepository.save(article);
+      await this.userRepository.save(author);
+    }
+
+    return await this.articleWithComments(article.slug);
+  }
+
+  async articleWithComments(slug: string): Promise<ArticleEntity> {
+    const queryBuilder =
+      getRepository(ArticleEntity).createQueryBuilder('articles');
+
+    const articleWithComments = queryBuilder
+      .leftJoinAndSelect('articles.author', 'author')
+      .leftJoinAndSelect('articles.comments', 'comments')
+      .innerJoinAndSelect('comments.author', 'creator')
+      .where('articles.slug = :slug', { slug })
+      .orderBy('comments.createdAt', 'DESC');
+
+    return await articleWithComments.getOne();
   }
 
   buildArticleResponse(article: ArticleEntity): ArticleResponseInterface {
