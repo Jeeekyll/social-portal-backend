@@ -88,6 +88,7 @@ export class ArticleController {
     @Param('slug') slug: string,
   ) {
     const { cover } = file;
+
     const article = await this.articleService.updateCover(
       currentUserId,
       slug,

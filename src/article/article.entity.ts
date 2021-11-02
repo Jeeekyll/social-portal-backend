@@ -2,14 +2,13 @@ import {
   BeforeUpdate,
   Column,
   Entity,
-  JoinTable,
-  ManyToMany,
   ManyToOne,
   OneToMany,
   PrimaryGeneratedColumn,
 } from 'typeorm';
 import { UserEntity } from '../user/user.entity';
 import { CommentEntity } from '../comment/comment.entity';
+import { CategoryEntity } from '../category/category.entity';
 
 @Entity({ name: 'articles' })
 export class ArticleEntity {
@@ -50,6 +49,11 @@ export class ArticleEntity {
 
   @OneToMany(() => CommentEntity, (comment) => comment.article)
   comments: CommentEntity[];
+
+  @ManyToOne(() => CategoryEntity, (category) => category.articles, {
+    eager: true,
+  })
+  category: CategoryEntity;
 
   @BeforeUpdate()
   updateTimestamp() {

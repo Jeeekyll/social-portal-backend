@@ -26,7 +26,11 @@ export class ArticleService {
   ): Promise<ArticlesResponseInterface> {
     const queryBuilder = getRepository(ArticleEntity)
       .createQueryBuilder('articles')
-      .leftJoinAndSelect('articles.author', 'author');
+      .leftJoinAndSelect('articles.author', 'author')
+      .leftJoinAndSelect('articles.category', 'category')
+      .leftJoinAndSelect('articles.comments', 'comments');
+
+    //Todo fix COMMENTS relation pagination
 
     queryBuilder.orderBy('articles.createdAt', 'DESC');
     const articlesCount = await queryBuilder.getCount();
@@ -83,13 +87,13 @@ export class ArticleService {
       .createQueryBuilder('articles')
       .where('articles.slug = :slug', { slug });
 
-    const articleWithComments = queryBuilder
+    return await queryBuilder
       .leftJoinAndSelect('articles.author', 'author')
       .leftJoinAndSelect('articles.comments', 'comments')
       .leftJoinAndSelect('comments.author', 'creator')
-      .orderBy('comments.createdAt', 'DESC');
-
-    return await articleWithComments.getOne();
+      .leftJoinAndSelect('articles.category', 'category')
+      .orderBy('comments.createdAt', 'DESC')
+      .getOne();
   }
 
   async deleteArticle(slug: string, userId: number) {
@@ -122,7 +126,7 @@ export class ArticleService {
     }
 
     Object.assign(articleBySlug, updateArticleDto);
-    articleBySlug.slug = this.getSlug(articleBySlug.title);
+    // articleBySlug.slug = this.getSlug(articleBySlug.title);
 
     return await this.articleRepository.save(articleBySlug);
   }
@@ -169,7 +173,7 @@ export class ArticleService {
       await this.userRepository.save(author);
     }
 
-    return await this.articleWithComments(article.slug);
+    return await this.findOne(article.slug);
   }
 
   async deleteArticleFromFavourites(slug: string, userId: number) {
@@ -190,7 +194,7 @@ export class ArticleService {
       await this.userRepository.save(author);
     }
 
-    return await this.articleWithComments(article.slug);
+    return await this.findOne(article.slug);
   }
 
   async articleWithComments(slug: string): Promise<ArticleEntity> {

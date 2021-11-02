@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   Param,
   Post,
@@ -26,6 +27,12 @@ export class CommentController {
     @User() author: UserEntity,
   ) {
     return await this.commentService.create(createCommentDto, author);
+  }
+
+  @Delete(':id')
+  @UseGuards(AuthGuard)
+  async delete(@Param('id') commentId: number, @User() author: UserEntity) {
+    return await this.commentService.delete(commentId, author);
   }
 
   @Get(':id')
