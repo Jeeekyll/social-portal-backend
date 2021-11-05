@@ -2,7 +2,7 @@ import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
 import { CreateUserDto } from './dto/createUser.dto';
 import { UserEntity } from './user.entity';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { createQueryBuilder, getRepository, Repository } from 'typeorm';
 import { sign } from 'jsonwebtoken';
 import { JWT_SECRET } from '../config';
 import { UserResponseInterface } from './types/userResponse.interface';
@@ -12,6 +12,7 @@ import { UpdateUserDto } from './dto/updateUser.dto';
 import { FileService } from '../file/file.service';
 import { hash } from 'bcrypt';
 import { ChangePasswordDto } from './dto/changePassword.dto';
+import { ArticleEntity } from '../article/article.entity';
 
 @Injectable()
 export class UserService {
@@ -19,6 +20,8 @@ export class UserService {
     @InjectRepository(UserEntity)
     private readonly userRepository: Repository<UserEntity>,
     private readonly fileService: FileService,
+    @InjectRepository(ArticleEntity)
+    private readonly articleRepository: Repository<ArticleEntity>,
   ) {}
 
   async createUser(createUserDto: CreateUserDto): Promise<UserEntity> {
@@ -148,6 +151,24 @@ export class UserService {
     }
 
     return { data: isPasswordCorrect };
+  }
+
+  async findUserArticles(userId: number) {
+    const userById = await this.userRepository.findOne(userId);
+
+    if (!userById) {
+      throw new HttpException(
+        'Wrong credentials',
+        HttpStatus.UNPROCESSABLE_ENTITY,
+      );
+    }
+
+    const articles = await getRepository(ArticleEntity)
+      .createQueryBuilder('articles')
+      .where('articles.authorId = :id', { id: userById.id })
+      .getMany();
+
+    return { articles };
   }
 
   findById(id: number): Promise<UserEntity> {

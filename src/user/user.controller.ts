@@ -94,4 +94,10 @@ export class UserController {
       currentUserId,
     );
   }
+
+  @Get('user/articles')
+  @UseGuards(AuthGuard)
+  async findUserArticles(@User('id') userId: number) {
+    return await this.userService.findUserArticles(userId);
+  }
 }

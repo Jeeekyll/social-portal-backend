@@ -27,13 +27,9 @@ export class ArticleService {
     const queryBuilder = getRepository(ArticleEntity)
       .createQueryBuilder('articles')
       .leftJoinAndSelect('articles.author', 'author')
-      .leftJoinAndSelect('articles.category', 'category')
-      .leftJoinAndSelect('articles.comments', 'comments');
+      .leftJoinAndSelect('articles.category', 'category');
 
-    //Todo fix COMMENTS relation pagination
-
-    queryBuilder.orderBy('articles.createdAt', 'DESC');
-    const articlesCount = await queryBuilder.getCount();
+    //Todo fix COMMENTS relation pagination and add them into qb
 
     if (query.author) {
       const author = await this.userRepository.findOne({
@@ -51,6 +47,14 @@ export class ArticleService {
       });
     }
 
+    if (query.search) {
+      queryBuilder.andWhere('articles.title ILIKE :title', {
+        title: `%${query.search}%`,
+      });
+    }
+
+    queryBuilder.orderBy('articles.createdAt', 'DESC');
+
     if (query.limit) {
       queryBuilder.limit(query.limit);
     }
@@ -59,6 +63,7 @@ export class ArticleService {
       queryBuilder.offset(query.offset);
     }
 
+    const articlesCount = await queryBuilder.getCount();
     const articles = await queryBuilder.getMany();
 
     return {
@@ -83,17 +88,7 @@ export class ArticleService {
   }
 
   async findOne(slug: string): Promise<ArticleEntity> {
-    const queryBuilder = getRepository(ArticleEntity)
-      .createQueryBuilder('articles')
-      .where('articles.slug = :slug', { slug });
-
-    return await queryBuilder
-      .leftJoinAndSelect('articles.author', 'author')
-      .leftJoinAndSelect('articles.comments', 'comments')
-      .leftJoinAndSelect('comments.author', 'creator')
-      .leftJoinAndSelect('articles.category', 'category')
-      .orderBy('comments.createdAt', 'DESC')
-      .getOne();
+    return await this.articleRepository.findOne({ slug });
   }
 
   async deleteArticle(slug: string, userId: number) {
@@ -126,7 +121,6 @@ export class ArticleService {
     }
 
     Object.assign(articleBySlug, updateArticleDto);
-    // articleBySlug.slug = this.getSlug(articleBySlug.title);
 
     return await this.articleRepository.save(articleBySlug);
   }
@@ -197,22 +191,22 @@ export class ArticleService {
     return await this.findOne(article.slug);
   }
 
-  async articleWithComments(slug: string): Promise<ArticleEntity> {
-    const queryBuilder =
-      getRepository(ArticleEntity).createQueryBuilder('articles');
-
-    const articleWithComments = queryBuilder
-      .leftJoinAndSelect('articles.author', 'author')
-      .leftJoinAndSelect('articles.comments', 'comments')
-      .innerJoinAndSelect('comments.author', 'creator')
-      .where('articles.slug = :slug', { slug })
-      .orderBy('comments.createdAt', 'DESC');
-
-    return await articleWithComments.getOne();
-  }
-
   buildArticleResponse(article: ArticleEntity): ArticleResponseInterface {
     return { article };
+  }
+
+  async buildArticleResponseWithRelations(article: ArticleEntity) {
+    const queryBuilder = await getRepository(ArticleEntity)
+      .createQueryBuilder('articles')
+      .where('articles.id = :id', { id: article.id })
+      .leftJoinAndSelect('articles.author', 'author')
+      .leftJoinAndSelect('articles.comments', 'comments')
+      .leftJoinAndSelect('comments.author', 'creator')
+      .leftJoinAndSelect('articles.category', 'category')
+      .orderBy('comments.createdAt', 'DESC')
+      .getOne();
+
+    return { article: queryBuilder };
   }
 
   private getSlug(title: string): string {
