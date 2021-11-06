@@ -26,10 +26,10 @@ export class ArticleService {
   ): Promise<ArticlesResponseInterface> {
     const queryBuilder = getRepository(ArticleEntity)
       .createQueryBuilder('articles')
-      .leftJoinAndSelect('articles.author', 'author');
+      .leftJoinAndSelect('articles.author', 'author')
+      .leftJoinAndSelect('articles.category', 'category');
 
-    queryBuilder.orderBy('articles.createdAt', 'DESC');
-    const articlesCount = await queryBuilder.getCount();
+    //Todo fix COMMENTS relation pagination and add them into qb
 
     if (query.author) {
       const author = await this.userRepository.findOne({
@@ -47,6 +47,14 @@ export class ArticleService {
       });
     }
 
+    if (query.search) {
+      queryBuilder.andWhere('articles.title ILIKE :title', {
+        title: `%${query.search}%`,
+      });
+    }
+
+    queryBuilder.orderBy('articles.createdAt', 'DESC');
+
     if (query.limit) {
       queryBuilder.limit(query.limit);
     }
@@ -55,6 +63,7 @@ export class ArticleService {
       queryBuilder.offset(query.offset);
     }
 
+    const articlesCount = await queryBuilder.getCount();
     const articles = await queryBuilder.getMany();
 
     return {
@@ -79,11 +88,7 @@ export class ArticleService {
   }
 
   async findOne(slug: string): Promise<ArticleEntity> {
-    const queryBuilder = await getRepository(ArticleEntity)
-      .createQueryBuilder('articles')
-      .leftJoinAndSelect('articles.author', 'author')
-      .where('articles.slug = :slug', { slug });
-    return await queryBuilder.getOne();
+    return await this.articleRepository.findOne({ slug });
   }
 
   async deleteArticle(slug: string, userId: number) {
@@ -116,7 +121,6 @@ export class ArticleService {
     }
 
     Object.assign(articleBySlug, updateArticleDto);
-    articleBySlug.slug = this.getSlug(articleBySlug.title);
 
     return await this.articleRepository.save(articleBySlug);
   }
@@ -144,8 +148,65 @@ export class ArticleService {
     return await this.articleRepository.save(articleBySlug);
   }
 
+  async addArticleToFavourites(
+    slug: string,
+    userId: number,
+  ): Promise<ArticleEntity> {
+    const article = await this.articleRepository.findOne({ slug });
+    const author = await this.userRepository.findOne(userId, {
+      relations: ['favourites'],
+    });
+
+    const isNotLiked =
+      author.favourites.findIndex((item) => item.id === article.id) === -1;
+
+    if (isNotLiked) {
+      author.favourites.push(article);
+      article.favouritesCount++;
+      await this.articleRepository.save(article);
+      await this.userRepository.save(author);
+    }
+
+    return await this.findOne(article.slug);
+  }
+
+  async deleteArticleFromFavourites(slug: string, userId: number) {
+    const article = await this.articleRepository.findOne({ slug });
+    const author = await this.userRepository.findOne(userId, {
+      relations: ['favourites'],
+    });
+
+    const articleIndex = author.favourites.findIndex(
+      (item) => item.id === article.id,
+    );
+
+    if (articleIndex >= 0) {
+      author.favourites.splice(articleIndex, 1);
+      article.favouritesCount--;
+
+      await this.articleRepository.save(article);
+      await this.userRepository.save(author);
+    }
+
+    return await this.findOne(article.slug);
+  }
+
   buildArticleResponse(article: ArticleEntity): ArticleResponseInterface {
     return { article };
+  }
+
+  async buildArticleResponseWithRelations(article: ArticleEntity) {
+    const queryBuilder = await getRepository(ArticleEntity)
+      .createQueryBuilder('articles')
+      .where('articles.id = :id', { id: article.id })
+      .leftJoinAndSelect('articles.author', 'author')
+      .leftJoinAndSelect('articles.comments', 'comments')
+      .leftJoinAndSelect('comments.author', 'creator')
+      .leftJoinAndSelect('articles.category', 'category')
+      .orderBy('comments.createdAt', 'DESC')
+      .getOne();
+
+    return { article: queryBuilder };
   }
 
   private getSlug(title: string): string {

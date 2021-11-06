@@ -7,10 +7,11 @@ import config from './ormconfig';
 import { UserModule } from './user/user.module';
 import { AuthMiddleware } from './user/middlewares/auth.middleware';
 import { ArticleModule } from './article/article.module';
-import { PostModule } from './post/post.module';
 import { FileModule } from './file/file.module';
 import * as path from 'path';
 import { ServeStaticModule } from '@nestjs/serve-static';
+import { CommentModule } from './comment/comment.module';
+import { CategoryModule } from './category/category.module';
 
 @Module({
   imports: [
@@ -19,8 +20,9 @@ import { ServeStaticModule } from '@nestjs/serve-static';
     TagModule,
     UserModule,
     ArticleModule,
-    PostModule,
+    CommentModule,
     FileModule,
+    CategoryModule,
   ],
   controllers: [AppController],
   providers: [AppService],

@@ -10,5 +10,8 @@ export class CreateArticleDto {
   @IsNotEmpty()
   readonly body: string;
 
+  @IsNotEmpty()
+  readonly category: number;
+
   readonly tagList?: string[];
 }

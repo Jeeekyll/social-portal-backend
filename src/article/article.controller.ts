@@ -50,15 +50,14 @@ export class ArticleController {
   }
 
   @Get(':slug')
-  async findOne(
-    @Param('slug') slug: string,
-  ): Promise<ArticleResponseInterface> {
+  async findOne(@Param('slug') slug: string) {
     const article = await this.articleService.findOne(slug);
-    return this.articleService.buildArticleResponse(article);
+    return await this.articleService.buildArticleResponseWithRelations(article);
   }
 
-  @Put('/:slug')
+  @Put(':slug')
   @UseGuards(AuthGuard)
+  @UsePipes(new ValidationPipe())
   async update(
     @User('id') currentUserId: number,
     @Param('slug') articleSlug: string,
@@ -88,12 +87,39 @@ export class ArticleController {
     @Param('slug') slug: string,
   ) {
     const { cover } = file;
+
     const article = await this.articleService.updateCover(
       currentUserId,
       slug,
       cover[0],
     );
 
+    return this.articleService.buildArticleResponse(article);
+  }
+
+  @Post(':slug/favorite')
+  @UseGuards(AuthGuard)
+  async addArticleToFavourites(
+    @User('id') userId: number,
+    @Param('slug') slug: string,
+  ) {
+    const article = await this.articleService.addArticleToFavourites(
+      slug,
+      userId,
+    );
+    return this.articleService.buildArticleResponse(article);
+  }
+
+  @Delete(':slug/favorite')
+  @UseGuards(AuthGuard)
+  async deleteArticleFromFavourites(
+    @User('id') userId: number,
+    @Param('slug') slug: string,
+  ) {
+    const article = await this.articleService.deleteArticleFromFavourites(
+      slug,
+      userId,
+    );
     return this.articleService.buildArticleResponse(article);
   }
 }
