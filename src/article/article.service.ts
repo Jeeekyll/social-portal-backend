@@ -196,6 +196,8 @@ export class ArticleService {
   }
 
   async buildArticleResponseWithRelations(article: ArticleEntity) {
+    //Todo refactor articles comments relation
+
     const queryBuilder = await getRepository(ArticleEntity)
       .createQueryBuilder('articles')
       .where('articles.id = :id', { id: article.id })
