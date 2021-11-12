@@ -1,7 +1,7 @@
 import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { FollowEntity } from './follow.entity';
-import { Repository } from 'typeorm';
+import { getRepository, Repository } from 'typeorm';
 import { UserEntity } from '../user/user.entity';
 import { ProfileType } from './types/profile.type';
 import { ProfileResponseInterface } from './types/profileResponse.interface';
@@ -31,6 +31,29 @@ export class ProfileService {
       ...userByUsername,
       following: Boolean(isFollowed),
     };
+  }
+
+  async getFollowingUsers(currentUserId: number) {
+    const userById = await this.userRepository.findOne({ id: currentUserId });
+
+    if (!userById) {
+      throw new HttpException('User not found', HttpStatus.NOT_FOUND);
+    }
+
+    const followingUsers = await this.followRepository.find({
+      followerId: currentUserId,
+    });
+
+    if (!followingUsers) {
+      return { users: [] };
+    }
+
+    const followingUsersIdx = followingUsers.map((user) => user.followingId);
+    const queryBuilder = await getRepository(UserEntity)
+      .createQueryBuilder('users')
+      .where('users.id in (:...ids)', { ids: followingUsersIdx })
+      .getMany();
+    return { users: queryBuilder };
   }
 
   async follow(username: string, currentUserId: number) {
