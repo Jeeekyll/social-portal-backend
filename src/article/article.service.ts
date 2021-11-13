@@ -87,6 +87,21 @@ export class ArticleService {
     return await this.articleRepository.save(article);
   }
 
+  async findOneArticle(slug: string, currentUserId: number) {
+    const currentUser = await this.userRepository.findOne(currentUserId, {
+      relations: ['favourites'],
+    });
+
+    const likedArticlesRelation = currentUser.favourites.map(
+      (article) => article.id,
+    );
+    const article = await this.articleRepository.findOne({ slug });
+    return {
+      ...article,
+      userFavourites: likedArticlesRelation,
+    };
+  }
+
   async findOne(slug: string): Promise<ArticleEntity> {
     return await this.articleRepository.findOne({ slug });
   }
@@ -148,10 +163,7 @@ export class ArticleService {
     return await this.articleRepository.save(articleBySlug);
   }
 
-  async addArticleToFavourites(
-    slug: string,
-    userId: number,
-  ): Promise<ArticleEntity> {
+  async addArticleToFavourites(slug: string, userId: number) {
     const article = await this.articleRepository.findOne({ slug });
     const author = await this.userRepository.findOne(userId, {
       relations: ['favourites'],
@@ -167,7 +179,14 @@ export class ArticleService {
       await this.userRepository.save(author);
     }
 
-    return await this.findOne(article.slug);
+    const likedArticlesRelation = author.favourites.map(
+      (article) => article.id,
+    );
+
+    return {
+      ...article,
+      userFavourites: likedArticlesRelation,
+    };
   }
 
   async deleteArticleFromFavourites(slug: string, userId: number) {
@@ -188,7 +207,14 @@ export class ArticleService {
       await this.userRepository.save(author);
     }
 
-    return await this.findOne(article.slug);
+    const likedArticlesRelation = author.favourites.map(
+      (article) => article.id,
+    );
+
+    return {
+      ...article,
+      userFavourites: likedArticlesRelation,
+    };
   }
 
   buildArticleResponse(article: ArticleEntity): ArticleResponseInterface {

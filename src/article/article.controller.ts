@@ -50,9 +50,15 @@ export class ArticleController {
   }
 
   @Get(':slug')
-  async findOne(@Param('slug') slug: string) {
-    const article = await this.articleService.findOne(slug);
-    return await this.articleService.buildArticleResponseWithRelations(article);
+  async findOne(
+    @Param('slug') slug: string,
+    @User('id') currentUserId: number,
+  ) {
+    const article = await this.articleService.findOneArticle(
+      slug,
+      currentUserId,
+    );
+    return { article };
   }
 
   @Put(':slug')
@@ -107,7 +113,7 @@ export class ArticleController {
       slug,
       userId,
     );
-    return this.articleService.buildArticleResponse(article);
+    return { article };
   }
 
   @Delete(':slug/favorite')
@@ -120,6 +126,6 @@ export class ArticleController {
       slug,
       userId,
     );
-    return this.articleService.buildArticleResponse(article);
+    return { article };
   }
 }
