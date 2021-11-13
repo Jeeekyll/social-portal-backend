@@ -14,8 +14,12 @@ import { AuthGuard } from '../user/guards/auth.guard';
 export class ProfileController {
   constructor(private readonly profileService: ProfileService) {}
 
+  @Get('following')
+  async getFollowingUsers(@User('id') currentUserId: number) {
+    return await this.profileService.getFollowingUsers(currentUserId);
+  }
+
   @Get(':username')
-  @UseGuards(AuthGuard)
   async getUserProfile(
     @Param('username') username: string,
     @User('id') currentUserId: number,
