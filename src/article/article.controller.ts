@@ -54,10 +54,7 @@ export class ArticleController {
     @Param('slug') slug: string,
     @User('id') currentUserId: number,
   ) {
-    const article = await this.articleService.findOneArticle(
-      slug,
-      currentUserId,
-    );
+    const article = await this.articleService.findOne(slug, currentUserId);
     return { article };
   }
 

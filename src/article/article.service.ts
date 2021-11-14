@@ -87,27 +87,33 @@ export class ArticleService {
     return await this.articleRepository.save(article);
   }
 
-  async findOneArticle(slug: string, currentUserId: number) {
+  async findOne(slug: string, currentUserId: number) {
     const currentUser = await this.userRepository.findOne(currentUserId, {
       relations: ['favourites'],
     });
 
-    const likedArticlesRelation = currentUser.favourites.map(
-      (article) => article.id,
-    );
-    const article = await this.articleRepository.findOne({ slug });
+    const article = await getRepository(ArticleEntity)
+      .createQueryBuilder('article')
+      .where('article.slug = :slug', { slug })
+      .leftJoinAndSelect('article.author', 'author')
+      .leftJoinAndSelect('article.category', 'category')
+      .leftJoinAndSelect('article.comments', 'comments')
+      .leftJoinAndSelect('comments.author', 'commentAuthor')
+      .orderBy('comments.createdAt', 'DESC')
+      .getOne();
+
+    //check is user liked current article
+    const isArticleFavourite =
+      currentUser.favourites.findIndex((item) => item.id === article.id) !== -1;
+
     return {
       ...article,
-      userFavourites: likedArticlesRelation,
+      isFavourite: isArticleFavourite,
     };
   }
 
-  async findOne(slug: string): Promise<ArticleEntity> {
-    return await this.articleRepository.findOne({ slug });
-  }
-
   async deleteArticle(slug: string, userId: number) {
-    const articleBySlug = await this.findOne(slug);
+    const articleBySlug = await this.articleRepository.findOne({ slug });
 
     if (!articleBySlug) {
       throw new HttpException('Article does not exist', HttpStatus.NOT_FOUND);
@@ -179,13 +185,9 @@ export class ArticleService {
       await this.userRepository.save(author);
     }
 
-    const likedArticlesRelation = author.favourites.map(
-      (article) => article.id,
-    );
-
     return {
       ...article,
-      userFavourites: likedArticlesRelation,
+      isFavourite: true,
     };
   }
 
@@ -207,13 +209,9 @@ export class ArticleService {
       await this.userRepository.save(author);
     }
 
-    const likedArticlesRelation = author.favourites.map(
-      (article) => article.id,
-    );
-
     return {
       ...article,
-      userFavourites: likedArticlesRelation,
+      isFavourite: false,
     };
   }
 
