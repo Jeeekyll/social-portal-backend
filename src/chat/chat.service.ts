@@ -1,8 +1,8 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { MessageEntity } from './Message.entity';
 import { UserEntity } from '../user/user.entity';
+import { MessageEntity } from '../message/message.entity';
 
 @Injectable()
 export class ChatService {
@@ -11,9 +11,9 @@ export class ChatService {
     private readonly messagesRepository: Repository<MessageEntity>,
   ) {}
 
-  async saveMessage(content: string, author: UserEntity) {
+  async saveMessage(content: any, author: UserEntity) {
     const newMessage = await this.messagesRepository.create({
-      content,
+      ...content,
       author,
     });
     await this.messagesRepository.save(newMessage);

@@ -13,6 +13,7 @@ import { ServeStaticModule } from '@nestjs/serve-static';
 import { CommentModule } from './comment/comment.module';
 import { CategoryModule } from './category/category.module';
 import { ProfileModule } from './profile/profile.module';
+import { ChatModule } from './chat/chat.module';
 
 @Module({
   imports: [
@@ -25,6 +26,7 @@ import { ProfileModule } from './profile/profile.module';
     FileModule,
     CategoryModule,
     ProfileModule,
+    ChatModule,
   ],
   controllers: [AppController],
   providers: [AppService],

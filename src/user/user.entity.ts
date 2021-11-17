@@ -10,6 +10,10 @@ import {
 import { hash } from 'bcrypt';
 import { ArticleEntity } from '../article/article.entity';
 import { CommentEntity } from '../comment/comment.entity';
+import { RoomEntity } from '../room/room.entity';
+import { JoinedRoomEntity } from '../joinedRoom/joined-room.entity';
+import { MessageEntity } from '../message/message.entity';
+import { ConnectedUserEntity } from '../connectedUser/connected-user.entity';
 
 @Entity({ name: 'users' })
 export class UserEntity {
@@ -45,4 +49,16 @@ export class UserEntity {
 
   @OneToMany(() => CommentEntity, (comment) => comment.author)
   commentEntries: CommentEntity[];
+
+  @ManyToMany(() => RoomEntity, (room) => room.users)
+  rooms: RoomEntity[];
+
+  @OneToMany(() => ConnectedUserEntity, (connection) => connection.user)
+  connections: ConnectedUserEntity[];
+
+  @OneToMany(() => JoinedRoomEntity, (joinedRoom) => joinedRoom.room)
+  joinedRooms: JoinedRoomEntity[];
+
+  @OneToMany(() => MessageEntity, (message) => message.user)
+  messages: MessageEntity[];
 }
