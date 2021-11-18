@@ -17,10 +17,11 @@ export class MessageService {
 
   async findMessagesForRoom(room) {
     return this.messageRepository
-      .createQueryBuilder('room')
+      .createQueryBuilder('message')
       .leftJoin('message.room', 'room')
       .where('room.id = :roomId', { roomId: room.id })
       .leftJoinAndSelect('message.user', 'user')
-      .orderBy('message.createdAt', 'DESC');
+      .orderBy('message.createdAt', 'DESC')
+      .getMany();
   }
 }

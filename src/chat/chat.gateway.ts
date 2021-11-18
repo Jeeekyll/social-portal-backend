@@ -47,6 +47,7 @@ export class ChatGateway
       socket.data.user = user;
       const rooms = await this.roomService.getRoomsForUsers(user.id);
       await this.connectedUserService.create({ socketId: socket.id, user });
+      return this.server.to(socket.id).emit('rooms', rooms);
     } catch {
       return this.disconnect(socket);
     }
@@ -78,6 +79,7 @@ export class ChatGateway
       user: socket.data.user,
       room,
     });
+
     await this.server.to(socket.id).emit('messages', messages);
   }
 
@@ -87,12 +89,16 @@ export class ChatGateway
       ...message,
       user: socket.data.user,
     });
+
     const room = this.roomService.findOne(createdMessage.room.id);
     const joinedUsers = await this.joinedRoomService.findByRoom(room);
 
-    for (const user of joinedUsers) {
-      await this.server.to(user.socketId).emit(' ', createdMessage);
-    }
+    console.log('here', joinedUsers);
+
+    this.server.to(socket.id).emit('getMessage', {
+      ...createdMessage,
+      ...room,
+    });
   }
 
   async findCurrentUser(socket: Socket): Promise<UserEntity> {

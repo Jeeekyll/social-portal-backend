@@ -44,18 +44,18 @@ export class RoomService {
   }
 
   async getRoomsForUsers(userId: number) {
-    // const user = await this.userRepository.findOne(userId);
-    //
-    // if (!user) {
-    //   throw new HttpException('No access', HttpStatus.UNPROCESSABLE_ENTITY);
-    // }
+    const user = await this.userRepository.findOne(userId);
+
+    if (!user) {
+      throw new HttpException('No access', HttpStatus.UNPROCESSABLE_ENTITY);
+    }
 
     return this.roomRepository
       .createQueryBuilder('room')
       .leftJoin('room.users', 'users')
       .where('users.id = :userId', { userId })
       .leftJoinAndSelect('room.users', 'all_users')
-      .orderBy('room.updatedAt', 'DESC');
-    // .getMany();
+      .orderBy('room.updatedAt', 'DESC')
+      .getMany();
   }
 }
