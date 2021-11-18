@@ -44,7 +44,7 @@ export class ProfileService {
       followerId: currentUserId,
     });
 
-    if (!followingUsers) {
+    if (!followingUsers || followingUsers.length === 0) {
       return { users: [] };
     }
 

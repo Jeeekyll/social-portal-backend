@@ -23,7 +23,7 @@ export class RoomEntity {
   @Column({ nullable: true })
   description: string;
 
-  @ManyToMany(() => UserEntity)
+  @ManyToMany(() => UserEntity, (user) => user.rooms)
   @JoinTable()
   users: UserEntity[];
 

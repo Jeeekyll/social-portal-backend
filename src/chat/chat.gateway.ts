@@ -47,8 +47,6 @@ export class ChatGateway
       socket.data.user = user;
       const rooms = await this.roomService.getRoomsForUsers(user.id);
       await this.connectedUserService.create({ socketId: socket.id, user });
-      this.server.emit('welcome', `User connected, ${user.email}`);
-      // return this.server.to(socket.id).emit('rooms', rooms);
     } catch {
       return this.disconnect(socket);
     }
@@ -64,6 +62,12 @@ export class ChatGateway
 
     socket.emit('Error', new UnauthorizedException());
     socket.disconnect();
+  }
+
+  @SubscribeMessage('createRoom')
+  async createRoom(socket: Socket, room) {
+    const createdRoom = await this.roomService.create(room, socket.data.user);
+    return socket.emit('getCreatedRoom', createdRoom);
   }
 
   @SubscribeMessage('joinRoom')

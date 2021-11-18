@@ -10,6 +10,7 @@ import { RoomEntity } from '../room/room.entity';
 import { ConnectedUserEntity } from '../connectedUser/connected-user.entity';
 import { MessageEntity } from '../message/message.entity';
 import { JoinedRoomEntity } from '../joinedRoom/joined-room.entity';
+import { UserEntity } from '../user/user.entity';
 
 @Module({
   imports: [
@@ -19,6 +20,7 @@ import { JoinedRoomEntity } from '../joinedRoom/joined-room.entity';
       ConnectedUserEntity,
       MessageEntity,
       JoinedRoomEntity,
+      UserEntity,
     ]),
   ],
   providers: [
