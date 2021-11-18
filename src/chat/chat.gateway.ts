@@ -11,11 +11,12 @@ import { RoomService } from '../room/room.service';
 import { ConnectedUserService } from '../connectedUser/connected-user.service';
 import { JoinedRoomService } from '../joinedRoom/joined-room.service';
 import { MessageService } from '../message/message.service';
-import { OnModuleInit, UnauthorizedException, UseGuards } from '@nestjs/common';
-import { AuthGuard } from '../user/guards/auth.guard';
-import { User } from '../user/decorators/user.decorator';
+import { OnModuleInit, UnauthorizedException } from '@nestjs/common';
+import { JWT_SECRET } from '../config';
+import { verify } from 'jsonwebtoken';
+import { UserEntity } from '../user/user.entity';
 
-@WebSocketGateway({ cors: { origin: ['http://localhost:3000'] } })
+@WebSocketGateway(4000, { cors: { origin: ['http://localhost:3000'] } })
 export class ChatGateway
   implements OnGatewayConnection, OnGatewayDisconnect, OnModuleInit
 {
@@ -35,10 +36,9 @@ export class ChatGateway
     await this.joinedRoomService.deleteAll();
   }
 
-  @UseGuards(AuthGuard)
-  async handleConnection(socket: Socket, @User('id') userId: number) {
+  async handleConnection(socket: Socket) {
     try {
-      const user = await this.userService.findById(userId);
+      const user = await this.findCurrentUser(socket);
 
       if (!user) {
         return this.disconnect(socket);
@@ -47,7 +47,8 @@ export class ChatGateway
       socket.data.user = user;
       const rooms = await this.roomService.getRoomsForUsers(user.id);
       await this.connectedUserService.create({ socketId: socket.id, user });
-      return this.server.to(socket.id).emit('rooms', rooms);
+      this.server.emit('welcome', `User connected, ${user.email}`);
+      // return this.server.to(socket.id).emit('rooms', rooms);
     } catch {
       return this.disconnect(socket);
     }
@@ -59,6 +60,8 @@ export class ChatGateway
   }
 
   private disconnect(socket: Socket) {
+    this.server.emit('disconnected', 'User disconnected');
+
     socket.emit('Error', new UnauthorizedException());
     socket.disconnect();
   }
@@ -84,7 +87,13 @@ export class ChatGateway
     const joinedUsers = await this.joinedRoomService.findByRoom(room);
 
     for (const user of joinedUsers) {
-      await this.server.to(user.socketId).emit('messageAdded', createdMessage);
+      await this.server.to(user.socketId).emit(' ', createdMessage);
     }
+  }
+
+  async findCurrentUser(socket: Socket): Promise<UserEntity> {
+    const token = socket.handshake.headers.authorization.split(' ')[1];
+    const decode = verify(token, JWT_SECRET);
+    return await this.userService.findById(decode.id);
   }
 }
