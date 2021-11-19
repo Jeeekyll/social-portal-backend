@@ -1,4 +1,4 @@
-import { Controller, Get, UseGuards } from '@nestjs/common';
+import { Controller, Get, Param, UseGuards } from '@nestjs/common';
 import { AuthGuard } from '../user/guards/auth.guard';
 import { User } from '../user/decorators/user.decorator';
 import { RoomService } from './room.service';
@@ -12,5 +12,11 @@ export class RoomController {
   async findAllUsers(@User('id') userId: number) {
     const rooms = await this.roomService.getRoomsForUsers(userId);
     return { data: rooms };
+  }
+
+  @Get(':id')
+  @UseGuards(AuthGuard)
+  async findAllMessages(@Param('id') roomId: number) {
+    return await this.roomService.findAllMessages(roomId);
   }
 }

@@ -37,24 +37,28 @@ export class ChatGateway
   }
 
   async handleConnection(socket: Socket) {
-    try {
-      const user = await this.findCurrentUser(socket);
+    console.log('connected');
 
-      if (!user) {
-        return this.disconnect(socket);
-      }
-
-      socket.data.user = user;
-      const rooms = await this.roomService.getRoomsForUsers(user.id);
-      await this.connectedUserService.create({ socketId: socket.id, user });
-      return this.server.to(socket.id).emit('rooms', rooms);
-    } catch {
-      return this.disconnect(socket);
-    }
+    // try {
+    //   const user = await this.findCurrentUser(socket);
+    //
+    //   if (!user) {
+    //     return this.disconnect(socket);
+    //   }
+    //
+    //   socket.data.user = user;
+    //   const rooms = await this.roomService.getRoomsForUsers(user.id);
+    //   await this.connectedUserService.create({ socketId: socket.id, user });
+    //   return this.server.to(socket.id).emit('rooms', rooms);
+    // } catch {
+    //   return this.disconnect(socket);
+    // }
   }
 
   async handleDisconnect(socket: Socket) {
     await this.connectedUserService.deleteBySocketId(socket.id);
+    console.log('user disconnected');
+
     socket.disconnect();
   }
 
@@ -63,6 +67,16 @@ export class ChatGateway
 
     socket.emit('Error', new UnauthorizedException());
     socket.disconnect();
+  }
+
+  @SubscribeMessage('sendUser')
+  async sendUser(socket: Socket, data) {
+    const user = await this.userService.findById(data.id);
+    if (!user) {
+      return socket.disconnect();
+    }
+
+    return this.server.emit('getUser', user);
   }
 
   @SubscribeMessage('createRoom')
@@ -85,10 +99,7 @@ export class ChatGateway
 
   @SubscribeMessage('addMessage')
   async onAddMessage(socket: Socket, message) {
-    const createdMessage: any = await this.messageService.create({
-      ...message,
-      user: socket.data.user,
-    });
+    const createdMessage: any = await this.messageService.create(message);
 
     const room = this.roomService.findOne(createdMessage.room.id);
     const joinedUsers = await this.joinedRoomService.findByRoom(room);

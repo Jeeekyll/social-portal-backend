@@ -43,6 +43,21 @@ export class RoomService {
     });
   }
 
+  async findAllMessages(roomId: number) {
+    const room = await this.roomRepository
+      .createQueryBuilder('room')
+      .where('room.id = :roomId', { roomId })
+      .leftJoinAndSelect('room.messages', 'messages')
+      .leftJoinAndSelect('messages.user', 'user')
+      .getOne();
+
+    if (!room) {
+      throw new HttpException('Wrong room id', HttpStatus.UNPROCESSABLE_ENTITY);
+    }
+
+    return { data: room };
+  }
+
   async getRoomsForUsers(userId: number) {
     const user = await this.userRepository.findOne(userId);
 
