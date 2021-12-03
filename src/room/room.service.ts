@@ -3,6 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { RoomEntity } from './room.entity';
 import { Repository } from 'typeorm';
 import { UserEntity } from '../user/user.entity';
+import { CreateRoomDto } from './dto/createRoom.dto';
 
 @Injectable()
 export class RoomService {
@@ -13,28 +14,28 @@ export class RoomService {
     private readonly userRepository: Repository<UserEntity>,
   ) {}
 
-  async create(createRoomDto, author) {
+  async create(createRoomDto: CreateRoomDto, userId: number) {
     const room = new RoomEntity();
     Object.assign(room, { ...createRoomDto, users: [] });
 
-    const user = await this.userRepository.findOne(
-      { id: author.id },
+    const userById = await this.userRepository.findOne(
+      { id: userId },
       {
         relations: ['rooms'],
       },
     );
 
-    if (!user) {
-      throw new HttpException('Author not exist', HttpStatus.BAD_REQUEST);
+    if (!userById) {
+      throw new HttpException('User not exist', HttpStatus.BAD_REQUEST);
     }
 
-    user.rooms.push(room);
-    room.users.push(user);
-    await this.userRepository.save(user);
+    userById.rooms.push(room);
+    room.users.push(userById);
+    await this.userRepository.save(userById);
     await this.roomRepository.save(room);
     delete room.users;
 
-    return room;
+    return { data: room };
   }
 
   async findOne(id: number) {
@@ -56,6 +57,13 @@ export class RoomService {
     }
 
     return { data: room };
+  }
+
+  async findAll() {
+    const rooms = await this.roomRepository.find({
+      relations: ['users'],
+    });
+    return { data: rooms };
   }
 
   async getRoomsForUsers(userId: number) {

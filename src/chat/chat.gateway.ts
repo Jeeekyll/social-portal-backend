@@ -38,21 +38,6 @@ export class ChatGateway
 
   async handleConnection(socket: Socket) {
     console.log('connected');
-
-    // try {
-    //   const user = await this.findCurrentUser(socket);
-    //
-    //   if (!user) {
-    //     return this.disconnect(socket);
-    //   }
-    //
-    //   socket.data.user = user;
-    //   const rooms = await this.roomService.getRoomsForUsers(user.id);
-    //   await this.connectedUserService.create({ socketId: socket.id, user });
-    //   return this.server.to(socket.id).emit('rooms', rooms);
-    // } catch {
-    //   return this.disconnect(socket);
-    // }
   }
 
   async handleDisconnect(socket: Socket) {
@@ -86,27 +71,36 @@ export class ChatGateway
   }
 
   @SubscribeMessage('joinRoom')
-  async onJoinRoom(socket: Socket, room) {
-    const messages = await this.messageService.findMessagesForRoom(room);
-    await this.joinedRoomService.create({
+  async onJoinRoom(socket: Socket, { user, roomId }) {
+    console.log('roomid', roomId);
+
+    socket.join(`room/${roomId}`);
+    const room = await this.roomService.findOne(roomId);
+
+    const joinedRoom = await this.joinedRoomService.create({
       socketId: socket.id,
-      user: socket.data.user,
+      user,
       room,
     });
 
-    await this.server.to(socket.id).emit('messages', messages);
+    console.log(joinedRoom);
+    // const messages = await this.messageService.findMessagesForRoom(room);
+    // await this.joinedRoomService.create({
+    //   socketId: socket.id,
+    //   user: socket.data.user,
+    //   room,
+    // });
+
+    // await this.server.to(socket.id).emit('messages', messages);
   }
 
   @SubscribeMessage('addMessage')
   async onAddMessage(socket: Socket, message) {
     const createdMessage: any = await this.messageService.create(message);
-
     const room = this.roomService.findOne(createdMessage.room.id);
-    const joinedUsers = await this.joinedRoomService.findByRoom(room);
+    // const joinedUsers = await this.joinedRoomService.findByRoom(room);
 
-    console.log('here', joinedUsers);
-
-    this.server.to(socket.id).emit('getMessage', {
+    this.server.emit('getMessage', {
       ...createdMessage,
       ...room,
     });
