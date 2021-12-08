@@ -11,12 +11,14 @@ import { RoomService } from '../room/room.service';
 import { ConnectedUserService } from '../connectedUser/connected-user.service';
 import { JoinedRoomService } from '../joinedRoom/joined-room.service';
 import { MessageService } from '../message/message.service';
-import { OnModuleInit, UnauthorizedException } from '@nestjs/common';
+import { OnModuleInit } from '@nestjs/common';
 import { JWT_SECRET } from '../config';
 import { verify } from 'jsonwebtoken';
 import { UserEntity } from '../user/user.entity';
 
-@WebSocketGateway(4000, { cors: { origin: ['http://localhost:3000'] } })
+@WebSocketGateway(4000, {
+  cors: { origin: ['http://localhost:3000'] },
+})
 export class ChatGateway
   implements OnGatewayConnection, OnGatewayDisconnect, OnModuleInit
 {
@@ -36,73 +38,29 @@ export class ChatGateway
     await this.joinedRoomService.deleteAll();
   }
 
-  async handleConnection(socket: Socket) {
-    console.log('connected');
+  async handleConnection() {
+    console.log('User connect!');
   }
 
-  async handleDisconnect(socket: Socket) {
-    await this.connectedUserService.deleteBySocketId(socket.id);
-    console.log('user disconnected');
-
-    socket.disconnect();
-  }
-
-  private disconnect(socket: Socket) {
-    this.server.emit('disconnected', 'User disconnected');
-
-    socket.emit('Error', new UnauthorizedException());
-    socket.disconnect();
-  }
-
-  @SubscribeMessage('sendUser')
-  async sendUser(socket: Socket, data) {
-    const user = await this.userService.findById(data.id);
-    if (!user) {
-      return socket.disconnect();
-    }
-
-    return this.server.emit('getUser', user);
-  }
-
-  @SubscribeMessage('createRoom')
-  async createRoom(socket: Socket, room) {
-    const createdRoom = await this.roomService.create(room, socket.data.user);
-    return socket.emit('getCreatedRoom', createdRoom);
-  }
-
-  @SubscribeMessage('joinRoom')
-  async onJoinRoom(socket: Socket, { user, roomId }) {
-    console.log('roomid', roomId);
-
-    socket.join(`room/${roomId}`);
-    const room = await this.roomService.findOne(roomId);
-
-    const joinedRoom = await this.joinedRoomService.create({
-      socketId: socket.id,
-      user,
-      room,
+  async handleDisconnect() {
+    console.log('disconnect');
+    this.server.emit('CLIENT@ROOM:LEAVE', {
+      text: 'User disconnected',
     });
-
-    console.log(joinedRoom);
-    // const messages = await this.messageService.findMessagesForRoom(room);
-    // await this.joinedRoomService.create({
-    //   socketId: socket.id,
-    //   user: socket.data.user,
-    //   room,
-    // });
-
-    // await this.server.to(socket.id).emit('messages', messages);
   }
 
-  @SubscribeMessage('addMessage')
-  async onAddMessage(socket: Socket, message) {
-    const createdMessage: any = await this.messageService.create(message);
-    const room = this.roomService.findOne(createdMessage.room.id);
-    // const joinedUsers = await this.joinedRoomService.findByRoom(room);
+  @SubscribeMessage('SERVER@ROOM:JOIN')
+  async joinRoom(socket: Socket, { roomId }) {
+    socket.join(`room/${roomId}`);
+  }
 
-    this.server.emit('getMessage', {
-      ...createdMessage,
-      ...room,
+  @SubscribeMessage('SERVER@MESSAGE:CREATE')
+  async onAddMessage(socket: Socket, payload) {
+    const newMessage = await this.messageService.create(payload);
+    const roomById = await this.roomService.findOne(payload.room.id);
+
+    this.server.to('room/' + roomById.id).emit('CLIENT@MESSAGE:GET', {
+      ...newMessage,
     });
   }
 
