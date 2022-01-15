@@ -43,7 +43,6 @@ export class ChatGateway
   }
 
   async handleDisconnect() {
-    console.log('disconnect');
     this.server.emit('CLIENT@ROOM:LEAVE', {
       text: 'User disconnected',
     });

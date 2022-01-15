@@ -9,6 +9,7 @@ import slugify from 'slugify';
 import { UpdateArticleDto } from './dto/updateArticle.dto';
 import { ArticlesResponseInterface } from './types/articlesResponse.interface';
 import { FileService } from '../file/file.service';
+import { FollowEntity } from '../profile/follow.entity';
 
 @Injectable()
 export class ArticleService {
@@ -17,8 +18,11 @@ export class ArticleService {
     private readonly articleRepository: Repository<ArticleEntity>,
     @InjectRepository(UserEntity)
     private readonly userRepository: Repository<UserEntity>,
+    @InjectRepository(FollowEntity)
+    private readonly followRepository: Repository<FollowEntity>,
     private readonly fileService: FileService,
-  ) {}
+  ) {
+  }
 
   async findAll(
     userId: number,
@@ -48,7 +52,7 @@ export class ArticleService {
     }
 
     if (query.search) {
-      queryBuilder.andWhere('articles.title ILIKE :title', {
+      queryBuilder.andWhere('articles.title LIKE :title', {
         title: `%${query.search}%`,
       });
     }
@@ -65,6 +69,35 @@ export class ArticleService {
 
     const articlesCount = await queryBuilder.getCount();
     const articles = await queryBuilder.getMany();
+
+    const currentUser = await this.userRepository.findOne(
+      { id: userId },
+      { relations: ['favourites'] },
+    );
+
+    if (currentUser) {
+      const followedByCurrentUser = await this.followRepository.find({
+        where: { followerId: currentUser.id },
+        select: ['followingId'],
+      });
+
+      const articleWithFollowed = articles.map((article: any) => {
+        article.author.following =
+          followedByCurrentUser.findIndex(
+            (follower) => follower.followingId === article.author.id,
+          ) !== -1;
+
+        article.isFavourite =
+          currentUser.favourites.findIndex((item) => item.id === article.id) !== -1;
+
+        return article;
+      });
+
+      return {
+        articles: articleWithFollowed,
+        articlesCount,
+      };
+    }
 
     return {
       articles,

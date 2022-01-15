@@ -48,7 +48,7 @@ export class UserEntity {
   favourites: ArticleEntity[];
 
   @OneToMany(() => CommentEntity, (comment) => comment.author)
-  commentEntries: CommentEntity[];
+  comments: CommentEntity[];
 
   @ManyToMany(() => RoomEntity, (room) => room.users)
   rooms: RoomEntity[];

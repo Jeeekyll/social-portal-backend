@@ -22,7 +22,7 @@ export class CommentEntity {
   @CreateDateColumn({ type: 'timestamp' })
   updatedAt: Date;
 
-  @ManyToOne(() => UserEntity, (user) => user.commentEntries, {
+  @ManyToOne(() => UserEntity, (user) => user.comments, {
     eager: true,
   })
   author: UserEntity;

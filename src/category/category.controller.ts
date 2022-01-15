@@ -11,13 +11,14 @@ import { CategoryService } from './category.service';
 import { AuthGuard } from '../user/guards/auth.guard';
 import { CreateCategoryDto } from './dto/createCategory.dto';
 import { CategoryEntity } from './category.entity';
+import { CategoryResponseInterface } from './types/categoryResponse.interface';
 
 @Controller('categories')
 export class CategoryController {
   constructor(private readonly categoryService: CategoryService) {}
 
   @Get()
-  async findAll(): Promise<CategoryEntity[]> {
+  async findAll(): Promise<CategoryResponseInterface> {
     return await this.categoryService.findAll();
   }
 
