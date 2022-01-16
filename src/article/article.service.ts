@@ -218,8 +218,13 @@ export class ArticleService {
       await this.userRepository.save(author);
     }
 
+    const articleWithFollowings = await this.buildArticleWithFollowings(
+      author,
+      article,
+    );
+
     return {
-      ...article,
+      ...articleWithFollowings,
       isFavourite: true,
     };
   }
@@ -242,30 +247,36 @@ export class ArticleService {
       await this.userRepository.save(author);
     }
 
+    const articleWithFollowings = await this.buildArticleWithFollowings(
+      author,
+      article,
+    );
+
     return {
-      ...article,
+      ...articleWithFollowings,
       isFavourite: false,
     };
   }
 
-  buildArticleResponse(article: ArticleEntity): ArticleResponseInterface {
-    return { article };
+  private async buildArticleWithFollowings(
+    user: UserEntity,
+    article: any,
+  ): Promise<ArticleEntity> {
+    const followedByCurrentUser = await this.followRepository.find({
+      where: { followerId: user.id },
+      select: ['followingId'],
+    });
+
+    article.author.following =
+      followedByCurrentUser.findIndex(
+        (follower) => follower.followingId === article.author.id,
+      ) !== -1;
+
+    return article;
   }
 
-  async buildArticleResponseWithRelations(article: ArticleEntity) {
-    //Todo refactor articles comments relation
-
-    const queryBuilder = await getRepository(ArticleEntity)
-      .createQueryBuilder('articles')
-      .where('articles.id = :id', { id: article.id })
-      .leftJoinAndSelect('articles.author', 'author')
-      .leftJoinAndSelect('articles.comments', 'comments')
-      .leftJoinAndSelect('comments.author', 'creator')
-      .leftJoinAndSelect('articles.category', 'category')
-      .orderBy('comments.createdAt', 'DESC')
-      .getOne();
-
-    return { article: queryBuilder };
+  buildArticleResponse(article: ArticleEntity): ArticleResponseInterface {
+    return { article };
   }
 
   private getSlug(title: string): string {
